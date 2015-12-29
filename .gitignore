@@ -1,0 +1,9 @@
+**/obj/
+
+**/bin/*/*.config
+**/bin/*/*.pdb
+**/bin/*/*vshost*
+
+*.suo
+*.user
+*.ico
