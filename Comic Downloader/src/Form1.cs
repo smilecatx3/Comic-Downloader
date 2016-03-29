@@ -38,9 +38,19 @@ namespace Comic_Downloader
         private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
         {
             try {
-                new Ck101ComicDownloader(sender as BackgroundWorker).download(textBox_saveDirPath.Text, textbox_url.Text);
+                string url = textbox_url.Text;
+                string savePath = textBox_saveDirPath.Text;
+                AbstractComicDownloader downloader;
+                if (url.Contains("comic.ck101"))
+                    downloader = new Ck101Downloader(savePath, sender as BackgroundWorker);
+                else if (url.Contains("comico"))
+                    downloader = new ComicoDownloader(savePath, sender as BackgroundWorker);
+                else
+                    throw new Exception("此下載器不支援此網站");
+                downloader.Download(url);
             } catch (Exception ex) {
                 runException = ex;
+                Console.WriteLine(ex.StackTrace);
             }
         }
 
@@ -58,7 +68,7 @@ namespace Comic_Downloader
         private void backgroundWorker1_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             if (runException == null) {
-                statusLabel1.Text = "";
+                statusLabel1.Text = "就緒";
                 textBox_message.AppendText("已全數下載完成\n\n");
             } else {
                 MessageBox.Show("下載時出現錯誤", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);

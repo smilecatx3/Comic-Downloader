@@ -1,8 +1,5 @@
 **/obj/
-
-**/bin/*/*.config
-**/bin/*/*.pdb
-**/bin/*/*vshost*
+**/bin/
 
 *.suo
 *.user

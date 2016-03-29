@@ -8,3 +8,4 @@ Note that the copyright of the retrieved files belongs to its author. DO NOT use
 
 Currently it supports the following sites:
 - [卡提諾漫畫] (http://comic.ck101.com)
+- [comico] (http://www.comico.jp)
