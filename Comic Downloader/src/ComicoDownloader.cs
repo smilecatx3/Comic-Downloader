@@ -40,7 +40,7 @@ namespace Comic_Downloader
                 string episodeDir = string.Format(@"{0}\{1:000}", savePath, from);
                 Directory.CreateDirectory(episodeDir);
 
-                IList<string> imagePaths = new List<string>();
+                Queue<Image> images = new Queue<Image>();
                 IList<string> fileUrls = getFileUrls(ReadHtml(string.Format("{0}&articleNo={1}", site, from)));
 
                 for (int i=1; i<=fileUrls.Count; i++) {
@@ -49,9 +49,9 @@ namespace Comic_Downloader
                     
                     string imagePath = string.Format(@"{0}\{1:000}-{2:00}.jpg", episodeDir, from, i);
                     webClient.DownloadFile(fileUrls[i-1], imagePath);
-                    imagePaths.Add(imagePath);
+                    images.Enqueue(new Bitmap(imagePath));
                 }
-                Combine(imagePaths, episodeDir+".jpg");
+                new ImageMerger(episodeDir+".jpg").Merge(images);
                 worker.ReportProgress((int)progress, string.Format("已下載第{0}話至: {1}\n", from, episodeDir));
                 from++;
             }
@@ -70,47 +70,6 @@ namespace Comic_Downloader
                 list.Add(url.Substring(0, url.IndexOf("\"")));
             }
             return list;
-        }
-
-        // Combine images
-        private void Combine(IList<string> imagePaths, string savePath)
-        {
-            // Load images
-            int width = int.MinValue;
-            int height = 0;
-            IList<Bitmap> bitmaps = new List<Bitmap>();
-            foreach (string path in imagePaths) {
-                Bitmap bitmap = new Bitmap(path);
-                width = Math.Max(width, bitmap.Width);
-                height += bitmap.Height;
-                bitmaps.Add(bitmap);
-            }
-
-            // Combine images (Fixed x-coordinate)
-            Bitmap output = new Bitmap(width, height);
-            using (Graphics g = Graphics.FromImage(output)) {
-                int currentHeight = 0;
-                foreach (Bitmap bitmap in bitmaps) {
-                    g.DrawImage(bitmap, 0, currentHeight);
-                    currentHeight += bitmap.Height;
-                }
-            }
-
-            // Save image
-            EncoderParameters parameters = new EncoderParameters();
-            parameters.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 80L);
-            output.Save(savePath, GetEncoder(ImageFormat.Jpeg), parameters);
-        }
-
-        private ImageCodecInfo GetEncoder(ImageFormat format)
-        {
-            ImageCodecInfo[] codecs = ImageCodecInfo.GetImageDecoders();
-            foreach (ImageCodecInfo codec in codecs) {
-                if (codec.FormatID == format.Guid) {
-                    return codec;
-                }
-            }
-            return null;
         }
     }
 }

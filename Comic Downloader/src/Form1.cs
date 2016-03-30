@@ -50,7 +50,7 @@ namespace Comic_Downloader
                 downloader.Download(url);
             } catch (Exception ex) {
                 runException = ex;
-                Console.WriteLine(ex.StackTrace);
+                Console.WriteLine(ex.ToString());
             }
         }
 
