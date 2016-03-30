@@ -69,6 +69,7 @@ namespace Comic_Downloader
         {
             if (runException == null) {
                 statusLabel1.Text = "就緒";
+                progressBar1.Value = 100;
                 textBox_message.AppendText("已全數下載完成\n\n");
             } else {
                 MessageBox.Show("下載時出現錯誤", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
