@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace Comic_Downloader
 {
@@ -26,25 +28,32 @@ namespace Comic_Downloader
             if (!match.Success)
                 throw new Exception("網址格式: <from回數,to回數>網址");
             site = match.Groups[2].Value;
-            string condition = match.Groups[1].Value;
-            from = ushort.Parse(condition.Substring(1, condition.IndexOf(",")-1));
-            to = ushort.Parse(condition.Substring(condition.IndexOf(",")+1, condition.Length-condition.IndexOf(",")-2));
+            string range = match.Groups[1].Value;
+            from = ushort.Parse(range.Substring(1, range.IndexOf(",")-1));
+            to = ushort.Parse(range.Substring(range.IndexOf(",")+1, range.Length-range.IndexOf(",")-2));
             
             // TODO 404 not found handling
             // Start downloading
             int numEpisodes = to - from + 1;
-            for (int i=1; from<=to; i++, from++) {
-                string saveDir = string.Format(@"{0}\{1}", savePath, from);
-                Directory.CreateDirectory(saveDir);
+            double progress = 0.0;
+            while (from <= to) {
+                string episodeDir = string.Format(@"{0}\{1:000}", savePath, from);
+                Directory.CreateDirectory(episodeDir);
 
+                IList<string> imagePaths = new List<string>();
                 IList<string> fileUrls = getFileUrls(ReadHtml(string.Format("{0}&articleNo={1}", site, from)));
-                for (int j=0; j<fileUrls.Count; j++) {
-                    worker.ReportProgress(
-                            (int)((double)((j+1)/fileUrls.Count)*(i/numEpisodes*100.0)), 
-                            string.Format("下載第{0}話中... ({0}回/{1}回 : {2}頁/{3}頁)", i, numEpisodes, j+1, fileUrls.Count));
-                    webClient.DownloadFile(fileUrls[j], string.Format(@"{0}\{1}-{2:00}.jpg", saveDir, i, j));
+
+                for (int i=1; i<=fileUrls.Count; i++) {
+                    progress += 1.0 / fileUrls.Count / numEpisodes * 100.0;
+                    worker.ReportProgress((int)progress, string.Format("下載第{0}話中... ({0}話/{1}話 : {2}頁/{3}頁)", from, to, i, fileUrls.Count));
+                    
+                    string imagePath = string.Format(@"{0}\{1:000}-{2:00}.jpg", episodeDir, from, i);
+                    webClient.DownloadFile(fileUrls[i-1], imagePath);
+                    imagePaths.Add(imagePath);
                 }
-                worker.ReportProgress(0, string.Format("已下載第{0}話至: {1}\n", i, saveDir));
+                Combine(imagePaths, episodeDir+".jpg");
+                worker.ReportProgress((int)progress, string.Format("已下載第{0}話至: {1}\n", from, episodeDir));
+                from++;
             }
         }
 
@@ -63,5 +72,45 @@ namespace Comic_Downloader
             return list;
         }
 
+        // Combine images
+        private void Combine(IList<string> imagePaths, string savePath)
+        {
+            // Load images
+            int width = int.MinValue;
+            int height = 0;
+            IList<Bitmap> bitmaps = new List<Bitmap>();
+            foreach (string path in imagePaths) {
+                Bitmap bitmap = new Bitmap(path);
+                width = Math.Max(width, bitmap.Width);
+                height += bitmap.Height;
+                bitmaps.Add(bitmap);
+            }
+
+            // Combine images (Fixed x-coordinate)
+            Bitmap output = new Bitmap(width, height);
+            using (Graphics g = Graphics.FromImage(output)) {
+                int currentHeight = 0;
+                foreach (Bitmap bitmap in bitmaps) {
+                    g.DrawImage(bitmap, 0, currentHeight);
+                    currentHeight += bitmap.Height;
+                }
+            }
+
+            // Save image
+            EncoderParameters parameters = new EncoderParameters();
+            parameters.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 80L);
+            output.Save(savePath, GetEncoder(ImageFormat.Jpeg), parameters);
+        }
+
+        private ImageCodecInfo GetEncoder(ImageFormat format)
+        {
+            ImageCodecInfo[] codecs = ImageCodecInfo.GetImageDecoders();
+            foreach (ImageCodecInfo codec in codecs) {
+                if (codec.FormatID == format.Guid) {
+                    return codec;
+                }
+            }
+            return null;
+        }
     }
 }
