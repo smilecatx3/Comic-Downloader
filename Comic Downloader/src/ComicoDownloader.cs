@@ -41,7 +41,7 @@ namespace Comic_Downloader
                 Directory.CreateDirectory(episodeDir);
 
                 Queue<Image> images = new Queue<Image>();
-                IList<string> fileUrls = getFileUrls(ReadHtml(string.Format("{0}&articleNo={1}", site, from)));
+                IList<string> fileUrls = getFileUrls(site, from);
 
                 for (int i=1; i<=fileUrls.Count; i++) {
                     progress += 1.0 / fileUrls.Count / numEpisodes * 100.0;
@@ -57,11 +57,20 @@ namespace Comic_Downloader
             }
         }
 
-        private IList<string> getFileUrls(string html)
+        private IList<string> getFileUrls(string site, ushort episode)
         {
+            string html = ReadHtml(string.Format("{0}&articleNo={1}", site, episode));
+            if (site.Contains("www.comico.jp/")) {
+                html = html.Substring(html.IndexOf("<section class=\"m-section-detail__body\" id=\"_comicTop\">"));
+                html = html.Substring(0, html.IndexOf("</section>"));
+            } else if (site.Contains("www.comico.com.tw")) {
+                html = html.Substring(html.IndexOf("<div class=\"_view\">"));
+                html = html.Substring(0, html.IndexOf("</div>"));
+            } else {
+                throw new Exception("目前僅支援jp和tw的comico網站");
+            }
+            
             IList<string> list = new List<string>();
-            html = html.Substring(html.IndexOf("<section class=\"m-section-detail__body\" id=\"_comicTop\">"));
-            html = html.Substring(0, html.IndexOf("</section>"));
             string[] lines = html.Replace("\r", "").Split('\n');
             foreach (string line in lines) {
                 if (!line.Contains("img src"))
